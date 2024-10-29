@@ -1,31 +1,24 @@
 <?php
-session_start(); // Start the session at the beginning of the script
+session_start();
 require 'firebase/config.php';
 
 $firebase = new FirebaseConfig();
 $auth = $firebase->getAuth();
 
-// Get the JSON input from the request
 $input = json_decode(file_get_contents('php://input'), true);
-$token = $input['token'] ?? '';
+$token = $input['token'];
 
 try {
-    // Verify the ID token received from the client
+    // Verify the token using Firebase Auth
     $verifiedIdToken = $auth->verifyIdToken($token);
-    
-    // Store the user ID in the session
-    $_SESSION['user_id'] = $verifiedIdToken->getClaim('sub');
-    
-    // Optionally, store other claims if needed
-    $_SESSION['email'] = $verifiedIdToken->getClaim('email'); // Store email if necessary
+    $uid = $verifiedIdToken->getClaim('sub');
 
-    // Return a success response
+    // Store user ID in session
+    $_SESSION['user_id'] = $uid;
+
     echo json_encode(['success' => true]);
 } catch (Exception $e) {
-    // Log the error message (optional, for debugging)
-    error_log('Token verification failed: ' . $e->getMessage());
-    
-    // Return a failure response
-    echo json_encode(['success' => false, 'message' => 'Token verification failed.']);
+    // Log the error message
+    error_log('Token verification error: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
-?>

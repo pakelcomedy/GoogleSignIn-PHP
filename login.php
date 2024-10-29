@@ -1,18 +1,23 @@
 <?php
 session_start();
+$error = isset($_SESSION['message']) ? $_SESSION['message'] : '';
+unset($_SESSION['message']); // Clear the message after displaying it
+
 require 'firebase/config.php';
 
 $firebase = new FirebaseConfig();
 $auth = $firebase->getAuth();
-$error = ""; // Inisialisasi variabel error
+$error = ""; // Initialize error variable
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     $password = $_POST['password'];
 
     try {
-        $user = $auth->verifyPassword($email, $password);
-        $_SESSION['user_id'] = $user->uid;
+        // Authenticate user with email and password
+        $user = $auth->getUserByEmail($email); // Check if the user exists
+        $signInResult = $auth->verifyPassword($email, $password);
+        $_SESSION['user_id'] = $signInResult->uid; // Store user ID in session
         header('Location: home.php');
         exit();
     } catch (Exception $e) {
@@ -28,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <style>
+        /* Your existing CSS styles */
         body {
             font-family: Arial, sans-serif;
             background-color: #f0f2f5;
@@ -95,10 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin-top: 10px;
         }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.x.x/firebase-auth.js"></script>
-    <script>
-        // Your web app's Firebase configuration
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyBdDOQx-Yfl9ydoB5FIWEyn4DJrEwWjp5k",
             authDomain: "kabare-cf940.firebaseapp.com",
@@ -106,49 +113,56 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             storageBucket: "kabare-cf940.appspot.com",
             messagingSenderId: "675057825306",
             appId: "1:675057825306:web:ebe75a0745d0971fbc43a3",
-            measurementId: "G-NVK1DR5YMN" // Optional, if you are using Analytics
+            measurementId: "G-NVK1DR5YMN"
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
 
         // Function to handle Google Sign-In
-        function signInWithGoogle() {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            firebase.auth().signInWithPopup(provider)
+        window.signInWithGoogle = function() {
+            console.log("Attempting to sign in with Google...");
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider)
                 .then((result) => {
-                    // Get the user's ID token
-                    result.user.getIdToken().then(token => {
-                        // Send the token to your server for verification
-                        fetch('verify_token.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ token })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                window.location.href = 'home.php'; // Redirect to home on success
-                            } else {
-                                console.error('Token verification failed:', data.message);
-                            }
-                        });
+                    return result.user.getIdToken();
+                })
+                .then((token) => {
+                    return fetch('verify_token.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token })
                     });
                 })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    if (data.success) {
+                        window.location.href = 'home.php';
+                    } else {
+                        console.error('Token verification failed:', data.message);
+                        alert('Token verification failed. Please try again.');
+                    }
+                })
                 .catch((error) => {
-                    console.error('Google Sign-In error:', error.message);
+                    console.error('Google Sign-In error:', error);
+                    alert('An error occurred during Google Sign-In. Please try again: ' + error.message);
                 });
-        }
+        };
     </script>
 </head>
 <body>
     <div class="login-container">
         <h2>Login</h2>
         
-        <!-- Pesan Error -->
+        <!-- Error Message -->
         <?php if (!empty($error)) { echo "<div class='error'>$error</div>"; } ?>
 
-        <!-- Form Login -->
+        <!-- Login Form -->
         <form method="POST" action="">
             <input type="email" name="email" placeholder="Email" required><br>
             <input type="password" name="password" placeholder="Password" required><br>
