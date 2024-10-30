@@ -63,9 +63,11 @@ if (!$isValid) {
 $claims = $token->claims();
 $name = $claims->get('name');
 $email = $claims->get('email');
+$picture = $claims->get('picture');
 
 echo json_encode([
     'success' => true,
     'name' => $name,
-    'email' => $email
+    'email' => $email,
+    'picture' => $picture
 ]);
