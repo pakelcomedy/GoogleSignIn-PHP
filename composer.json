@@ -2,7 +2,8 @@
     "name": "vendor/google-signin-php",
     "description": "A simple project to implement Google Sign-In with Firebase in PHP",
     "require": {
-        "kreait/firebase-php": "^5.26"
+        "kreait/firebase-php": "^5.26",
+        "lcobucci/jwt": "^4.0"
     },
     "autoload": {
         "psr-4": {

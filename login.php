@@ -10,18 +10,23 @@ $auth = $firebase->getAuth();
 $error = ""; // Initialize error variable
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
+    // Pastikan data POST memiliki `email` dan `password`
+    if (!empty($_POST['email']) && !empty($_POST['password'])) {
+        $email = $_POST['email'];
+        $password = $_POST['password'];
 
-    try {
-        // Authenticate user with email and password
-        $user = $auth->getUserByEmail($email); // Check if the user exists
-        $signInResult = $auth->verifyPassword($email, $password);
-        $_SESSION['user_id'] = $signInResult->uid; // Store user ID in session
-        header('Location: home.php');
-        exit();
-    } catch (Exception $e) {
-        $error = "Login failed: " . $e->getMessage();
+        try {
+            // Authenticate user with email and password
+            $user = $auth->getUserByEmail($email); // Check if the user exists
+            $signInResult = $auth->verifyPassword($email, $password);
+            $_SESSION['user_id'] = $signInResult->uid; // Store user ID in session
+            header('Location: home.php');
+            exit();
+        } catch (Exception $e) {
+            $error = "Login failed: " . $e->getMessage();
+        }
+    } else {
+        $error = "Please enter both email and password.";
     }
 }
 ?>
@@ -106,6 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyBdDOQx-Yfl9ydoB5FIWEyn4DJrEwWjp5k",
             authDomain: "kabare-cf940.firebaseapp.com",
@@ -116,6 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             measurementId: "G-NVK1DR5YMN"
         };
 
+        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
 
@@ -123,26 +130,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         window.signInWithGoogle = function() {
             console.log("Attempting to sign in with Google...");
             const provider = new GoogleAuthProvider();
+
             signInWithPopup(auth, provider)
                 .then((result) => {
-                    return result.user.getIdToken();
+                    return result.user.getIdToken(); // Get the ID token
                 })
                 .then((token) => {
+                    console.log("ID Token:", token); // Log the token to check its value
+
+                    // Display the ID token on the page
+                    document.getElementById("id-token-display").innerText = token;
+
+                    // Optionally, send token to the server
                     return fetch('verify_token.php', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token })
+                        body: JSON.stringify({ token }) // Make sure token is sent here
                     });
                 })
                 .then((response) => {
                     if (!response.ok) {
-                        throw new Error('Network response was not ok: ' + response.status);
+                        throw new Error('Server responded with an error: ' + response.status);
                     }
                     return response.json();
                 })
                 .then((data) => {
                     if (data.success) {
-                        window.location.href = 'home.php';
+                        window.location.href = 'home.php'; // Redirect to index on success
                     } else {
                         console.error('Token verification failed:', data.message);
                         alert('Token verification failed. Please try again.');
@@ -167,9 +181,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <input type="email" name="email" placeholder="Email" required><br>
             <input type="password" name="password" placeholder="Password" required><br>
             <button type="submit">Login</button>
-        </form>
+        </form> 
 
         <button class="google-signin" onclick="signInWithGoogle()">Sign in with Google</button>
+
+        <!-- Display the ID token here -->
+        <div id="id-token-display" style="margin-top: 20px; color: green;"></div>
 
         <a href="signup.php" class="signup-link">Don't have an account? Sign up here</a>
     </div>
